@@ -8,6 +8,9 @@ description: |
     Single server installation.
 skipNodeEmails: true
 
+categories:
+  - apps/dev-and-admin-tools
+
 globals:
   GRAYLOG_PASSWD: ${fn.password(12)}
   SECRET: ${fn.password(96)}
