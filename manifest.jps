@@ -16,17 +16,12 @@ globals:
   SECRET: ${fn.password(96)}
 
 nodes:
-- count: 1
-  fixedCloudlets: 16
-  flexibleCloudlets: 32
-  nodeType: centos7
-  nodeGroup: vds
-  port: 22
-  extip: false
+- nodeType: centos7  
+  cloudlets: 32
+  extip: true
 
 onInstall:
-  - installCommon
-  - addEndPoint
+  - installCommon  
   - installMongo
   - installElastic
   - installGraylog
@@ -36,15 +31,7 @@ actions:
     - cmd [centos7]: |-
         yum install epel-release -y >/dev/null 2>&1
         yum install net-tools pwgen java-1.8.0-openjdk-headless.x86_64 -y >/dev/null 2>&1
-  addEndPoint:
-    - jelastic.environment.control.AddEndpoint:
-       envName: ${env.envName}
-       nodeId: ${nodes.centos7.id}
-       privatePort: 9000
-       protocol: tcp
-       name: Graylog
-    - setGlobals:
-        publicPort: ${response.object.publicPort}
+
   installMongo:
     - cmd [centos7]: |-
         wget -qO /etc/yum.repos.d/mongodb-org.repo http://dot.jelastic.com/download/team.operations/graylog/mongodb-org.repo
@@ -60,23 +47,20 @@ actions:
         systemctl daemon-reload ; systemctl enable elasticsearch.service ; systemctl restart elasticsearch.service
   installGraylog:
     - cmd [centos7]: |-
-        rpm -Uvh https://packages.graylog2.org/repo/packages/graylog-3.1-repository_latest.rpm >/dev/null 2>&1
+        rpm -Uvh https://packages.graylog2.org/repo/packages/graylog-3.2-repository_latest.rpm >/dev/null 2>&1
         yum install graylog-server -y >/dev/null 2>&1
         sed "s/password_secret =/password_secret = ${globals.SECRET}/" -i /etc/graylog/server/server.conf
         PASSWORD_SHA2=$(echo -n ${globals.GRAYLOG_PASSWD} | sha256sum | cut -d" " -f1) ; sed "s/root_password_sha2 =/root_password_sha2 = ${PASSWORD_SHA2}/" -i /etc/graylog/server/server.conf
         sed -e "/# Default:[[:space:]]127.0.0.1:9000/a http_bind_address = 0.0.0.0:9000" -i /etc/graylog/server/server.conf
-        sed -e "/#http_publish_uri/a http_publish_uri = http://${env.domain}:${globals.publicPort}/" -i /etc/graylog/server/server.conf
-        sed -e "/allow_leading_wildcard_searches[[:space:]]*=[[:space:]]*false/allow_leading_wildcard_searches = true/"  -i /etc/graylog/server/server.conf
-        echo "${nodes.centos7.intIP} ${env.domain}" >> /etc/hosts
-        iptables -t nat -A OUTPUT -d ${nodes.centos7.intIP}/32 -p tcp -m tcp --dport ${globals.publicPort} -j REDIRECT --to-ports 9000; iptables-save > /etc/sysconfig/iptables
-        echo -e "\n*nat\n:PREROUTING ACCEPT [0:0]\n:INPUT ACCEPT [0:0]\n:OUTPUT ACCEPT [0:0]\n:POSTROUTING ACCEPT [0:0]\n-A OUTPUT -d ${nodes.centos7.intIP}/32 -p tcp -m tcp --dport ${globals.publicPort} -j REDIRECT --to-ports 9000\nCOMMIT" >> /etc/sysconfig/iptables-custom
-        systemctl daemon-reload ; systemctl enable graylog-server.service ; systemctl start graylog-server.service
-
+        sed -e "/#http_publish_uri/a http_publish_uri = http://${nodes.centos7.extips}:9000/" -i /etc/graylog/server/server.conf
+        sed -e "/allow_leading_wildcard_searches[[:space:]]*=[[:space:]]*false/allow_leading_wildcard_searches = true/"  -i /etc/graylog/server/server.conf      
+        systemctl daemon-reload ; systemctl enable graylog-server.service ; systemctl start graylog-server.service ; systemctl stop iptables ; systemctl restart graylog-server.service
+        
 success:
    text: |
 
       ### Graylog
-      * **URL** [http://${env.domain}:${globals.publicPort}](http://${env.domain}:${globals.publicPort})
+      * **URL** [http://${nodes.centos7.extips}:9000](http://${nodes.centos7.extips}:9000)
       * **Login:** admin
       * **Password:** ${globals.GRAYLOG_PASSWD}
 
