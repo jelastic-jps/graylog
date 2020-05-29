@@ -1,4 +1,5 @@
 type: install
+id: graylog
 name: GrayLog
 logo: images/graylog-logo.png
 homepage: https://www.graylog.org/
