@@ -20,7 +20,7 @@ globals:
 settings:
   fields:
     - type: list
-      caption: GrayLog version
+      caption: Graylog Version
       name: version
       default: 3.3
       required: true
