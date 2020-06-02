@@ -1,7 +1,7 @@
 type: install
 version: 1.7
 id: graylog
-name: GrayLog
+name: Graylog
 logo: images/graylog-logo.png
 homepage: https://www.graylog.org/
 baseUrl: https://raw.githubusercontent.com/jelastic-jps/graylog/master/
