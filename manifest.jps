@@ -1,6 +1,7 @@
 type: install
+version: 1.7
 id: graylog
-name: GrayLog
+name: Graylog
 logo: images/graylog-logo.png
 homepage: https://www.graylog.org/
 baseUrl: https://raw.githubusercontent.com/jelastic-jps/graylog/master/
@@ -16,53 +17,64 @@ globals:
   GRAYLOG_PASSWD: ${fn.password(12)}
   SECRET: ${fn.password(96)}
 
+settings:
+  fields:
+    - type: list
+      caption: Graylog Version
+      name: version
+      default: 3.3
+      required: true
+      values:
+        "3.2": 3.2
+        "3.3": 3.3
+
 nodes:
-- nodeType: centos7  
+- nodeType: centos-vps
   cloudlets: 32
   extip: true
 
 onInstall:
-  - installCommon  
+  - installCommon
   - installMongo
   - installElastic
   - installGraylog
 
 actions:
   installCommon:
-    - cmd [centos7]: |-
-        yum install epel-release -y >/dev/null 2>&1
-        yum install net-tools pwgen java-1.8.0-openjdk-headless.x86_64 -y >/dev/null 2>&1
-
+    - cmd [centos-vps]: |-
+        rpm --quiet -q epel-release || yum install epel-release -y -q
+        rpm --quiet -q pwgen || yum install pwgen -y -q
+        rpm --quiet -q java-1.8.0-openjdk-headless || yum install java-1.8.0-openjdk-headless -y -q
   installMongo:
-    - cmd [centos7]: |-
+    - cmd [centos-vps]: |-
         wget -qO /etc/yum.repos.d/mongodb-org.repo http://dot.jelastic.com/download/team.operations/graylog/mongodb-org.repo
-        yum install mongodb-org -y >/dev/null 2>&1
+        yum install mongodb-org -y -q
         systemctl daemon-reload ; systemctl enable mongod.service ; systemctl start mongod.service
   installElastic:
-    - cmd [centos7]: |-
+    - cmd [centos-vps]: |-
         wget -qO /etc/yum.repos.d/elasticsearch.repo http://dot.jelastic.com/download/team.operations/graylog/elasticsearch.repo
-        rpm --import https://artifacts.elastic.co/GPG-KEY-elasticsearch
-        yum install elasticsearch-oss -y >/dev/null 2>&1
+        rpm --quiet --import https://artifacts.elastic.co/GPG-KEY-elasticsearch
+        yum install elasticsearch-oss -y -q
         sed 's/#cluster.name: my-application/cluster.name: graylog/' -i /etc/elasticsearch/elasticsearch.yml
         sed '/cluster.name: graylog/a action.auto_create_index: false' -i /etc/elasticsearch/elasticsearch.yml
         systemctl daemon-reload ; systemctl enable elasticsearch.service ; systemctl restart elasticsearch.service
   installGraylog:
-    - cmd [centos7]: |-
-        rpm -Uvh https://packages.graylog2.org/repo/packages/graylog-3.2-repository_latest.rpm >/dev/null 2>&1
-        yum install graylog-server -y >/dev/null 2>&1
+    - cmd [centos-vps]: |-
+        rpm --quiet -Uvh https://packages.graylog2.org/repo/packages/graylog-${settings.version}-repository_latest.rpm
+        yum install graylog-server -y -q
         sed "s/password_secret =/password_secret = ${globals.SECRET}/" -i /etc/graylog/server/server.conf
         PASSWORD_SHA2=$(echo -n ${globals.GRAYLOG_PASSWD} | sha256sum | cut -d" " -f1) ; sed "s/root_password_sha2 =/root_password_sha2 = ${PASSWORD_SHA2}/" -i /etc/graylog/server/server.conf
         sed -e "/# Default:[[:space:]]127.0.0.1:9000/a http_bind_address = 0.0.0.0:9000" -i /etc/graylog/server/server.conf
-        sed -e "/#http_publish_uri/a http_publish_uri = http://${nodes.centos7.extips}:9000/" -i /etc/graylog/server/server.conf
-        sed -e "/allow_leading_wildcard_searches[[:space:]]*=[[:space:]]*false/allow_leading_wildcard_searches = true/"  -i /etc/graylog/server/server.conf      
+        sed -e "/#http_publish_uri/a http_publish_uri = http://${nodes.centos-vps.extips}:9000/" -i /etc/graylog/server/server.conf
+        sed -e "/allow_leading_wildcard_searches[[:space:]]*=[[:space:]]*false/allow_leading_wildcard_searches = true/"  -i /etc/graylog/server/server.conf
         systemctl daemon-reload ; systemctl enable graylog-server.service ; systemctl start graylog-server.service ; systemctl stop iptables ; systemctl restart graylog-server.service
-        
+
 success:
    text: |
 
-      ### Graylog
-      * **URL** [http://${nodes.centos7.extips}:9000](http://${nodes.centos7.extips}:9000)
-      * **Login:** admin
-      * **Password:** ${globals.GRAYLOG_PASSWD}
+      ### Graylog access credentials
+      **URL** [http://${nodes.centos-vps.extips}:9000](http://${nodes.centos-vps.extips}:9000)
+      **Login:** admin
+      **Password:** ${globals.GRAYLOG_PASSWD}
 
 # https://docs.graylog.org/en/3.1/pages/installation/os/centos.html
