@@ -23,11 +23,12 @@ settings:
     - type: list
       caption: Graylog Version
       name: version
-      default: 3.3
+      default: "4.0"
       required: true
       values:
         "3.2": 3.2
         "3.3": 3.3
+        "4.0": "4.0"
 
 nodes:
 - nodeType: centos-vps
@@ -73,9 +74,9 @@ actions:
 success:
    text: |
 
-      ### Graylog access credentials
-      **URL** [http://${nodes.centos-vps.extips}:9000](http://${nodes.centos-vps.extips}:9000)
-      **Login:** admin
+      ### Graylog access credentials  
+      **URL** [http://${nodes.centos-vps.extips}:9000](http://${nodes.centos-vps.extips}:9000)  
+      **Login:** admin  
       **Password:** ${globals.GRAYLOG_PASSWD}
 
 # https://docs.graylog.org/en/3.1/pages/installation/os/centos.html
