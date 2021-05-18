@@ -37,6 +37,7 @@ nodes:
   extip: true
   env:
     JELASTIC_EXPOSE: ${globals.EXPOSE_PORT}
+    JELASTIC_PORTS: ${globals.EXPOSE_PORT}
 
 onInstall:
   - installCommon
