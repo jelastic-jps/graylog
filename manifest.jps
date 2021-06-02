@@ -17,28 +17,34 @@ categories:
 globals:
   GRAYLOG_PASSWD: ${fn.password(12)}
   SECRET: ${fn.password(96)}
+  EXPOSE_PORT: 9000
 
 settings:
   fields:
     - type: list
       caption: Graylog Version
       name: version
-      default: 3.3
+      default: "4.0"
       required: true
       values:
         "3.2": 3.2
         "3.3": 3.3
+        "4.0": "4.0"
 
 nodes:
 - nodeType: centos-vps
   cloudlets: 32
   extip: true
+  env:
+    JELASTIC_EXPOSE: ${globals.EXPOSE_PORT}
+    JELASTIC_PORTS: ${globals.EXPOSE_PORT}
 
 onInstall:
   - installCommon
   - installMongo
   - installElastic
   - installGraylog
+  - cmd [centos-vps]: while [[ $(curl -s -w "%{http_code}" http://localhost:${globals.EXPOSE_PORT}/ -o /dev/null) != "200" ]]; do echo "."; sleep 2; done
 
 actions:
   installCommon:
@@ -68,14 +74,14 @@ actions:
         sed -e "/# Default:[[:space:]]127.0.0.1:9000/a http_bind_address = 0.0.0.0:9000" -i /etc/graylog/server/server.conf
         sed -e "/#http_publish_uri/a http_publish_uri = http://${nodes.centos-vps.extips}:9000/" -i /etc/graylog/server/server.conf
         sed -e "/allow_leading_wildcard_searches[[:space:]]*=[[:space:]]*false/allow_leading_wildcard_searches = true/"  -i /etc/graylog/server/server.conf
-        systemctl daemon-reload ; systemctl enable graylog-server.service ; systemctl start graylog-server.service ; systemctl stop iptables ; systemctl restart graylog-server.service
+        systemctl daemon-reload ; systemctl enable graylog-server.service ; systemctl start graylog-server.service ; systemctl restart graylog-server.service
 
 success:
    text: |
 
-      ### Graylog access credentials
-      **URL** [http://${nodes.centos-vps.extips}:9000](http://${nodes.centos-vps.extips}:9000)
-      **Login:** admin
+      ### Graylog access credentials  
+      **URL** [http://${nodes.centos-vps.extips}:9000](http://${nodes.centos-vps.extips}:9000)  
+      **Login:** admin  
       **Password:** ${globals.GRAYLOG_PASSWD}
 
 # https://docs.graylog.org/en/3.1/pages/installation/os/centos.html
